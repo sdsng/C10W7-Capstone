@@ -1,0 +1,138 @@
+C10 Data Science Capstone - Milestone Report
+===
+*By Sandy Sng*  
+*12 June 2018*
+
+## Executive Summary
+This is the Milestone Report for the Coursera Data Science Capstone Project.    
+The goal of the Capstone Project is to create an algorithm and build a predictive text mining application to predict the next word based on previous words typed by a user. Using three databases of english sentences (extracted from blogs, news, and twitter), we will build and analyse basic n-gram models for predicting the next word based on previous frequently occuring words.
+
+The motivation for this Milestone Report is to:  
+1. Demonstrate that you've downloaded the data and have successfully loaded it in.      
+2. Create a basic report of summary statistics about the data sets.     
+3. Report any interesting findings that you amassed so far.     
+4. Get feedback on your plans for creating a prediction algorithm and Shiny app.
+
+## Getting the Data 
+Download the three datasets from this [Data Source]("https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera- SwiftKey.zip"). We will only use the English versions (File name: en_US) for this analysis. 
+```{r echo=TRUE, message=FALSE, warning=FALSE, collapse=TRUE}
+
+if (!file.exists("final")) {
+  download.file("https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip")
+  unzip("Coursera-SwiftKey.zip")
+}
+
+blogs <- readLines("final/en_US/en_US.blogs.txt", encoding = "UTF-8", skipNul = TRUE)
+news <- readLines("final/en_US/en_US.news.txt", encoding = "UTF-8", skipNul = TRUE)
+twitter <- readLines("final/en_US/en_US.twitter.txt", encoding = "UTF-8", skipNul = TRUE)
+
+```
+
+Examine datasets for these information: file sizes, line counts, word counts, and mean words per line.
+```{r echo=TRUE, message=FALSE, warning=FALSE, collapse=TRUE}
+
+library(stringi)
+
+# Get file sizes
+blogs.size <- file.info("final/en_US/en_US.blogs.txt")$size / 1024 ^ 2
+news.size <- file.info("final/en_US/en_US.news.txt")$size / 1024 ^ 2
+twitter.size <- file.info("final/en_US/en_US.twitter.txt")$size / 1024 ^ 2
+
+# Get no. of words in files
+blogs.words <- stri_count_words(blogs)
+news.words <- stri_count_words(news)
+twitter.words <- stri_count_words(twitter)
+
+# Summary of the datasets
+data.frame(source = c("blogs", "news", "twitter"),
+           file.size.MB = c(blogs.size, news.size, twitter.size),
+           num.lines = c(length(blogs), length(news), length(twitter)),
+           num.words = c(sum(blogs.words), sum(news.words), sum(twitter.words)),
+           mean.num.words = c(mean(blogs.words), mean(news.words), mean(twitter.words)))
+
+```
+
+## Cleaning the Data
+This involves removing URLs, special characters, punctuations, numbers, excess whitespace, stopwords, and changing the text to lower case. Since the data sets are quite large, we will randomly choose 1% of the data to demonstrate the data cleaning and exploratory analysis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, collapse=TRUE}
+
+library(tm)
+# Sample the data (random at 1%)
+set.seed(324)
+data.sample <- c(sample(blogs, length(blogs) * 0.01),
+                 sample(news, length(news) * 0.01),
+                 sample(twitter, length(twitter) * 0.01))
+
+# Create corpus and clean the data
+corpus <- VCorpus(VectorSource(data.sample)) # Vcorpus: used to create volatile corpora, so it is fully kept in memory and any changes affect only the corresponding R object. For reference check the tm #package.
+toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+corpus <- tm_map(corpus, toSpace, "(f|ht)tp(s?)://(.*)[.][a-z]+")
+corpus <- tm_map(corpus, toSpace, "@[^\\s]+")
+corpus <- tm_map(corpus, tolower)
+corpus <- tm_map(corpus, removeWords, stopwords("en"))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, PlainTextDocument)
+
+```
+
+## Exploratory Data Analysis
+##### Part 1: Visualising Data using Wordcloud 
+Words with the highest frequency of occurence are plotted first in the center of the wordcloud. 
+```{r echo=TRUE, message=FALSE, warning=FALSE, collapse=TRUE}
+
+library(wordcloud)
+wordcloud(corpus, max.words = 1000, random.order = FALSE, rot.per = 0.3, use.r.layout = FALSE, colors = brewer.pal(4, "BuPu"))
+
+```
+
+##### Part 2: Visualising Data using n-gram Models
+Build basic n-gram models for predicting the next word based on the frequency occuring words in the data.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, collapse=TRUE}
+
+library(ngram)
+library(RWeka)
+
+options(mc.cores=1) # RWeka bug workaround 
+
+unigram <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
+bigram <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+trigram <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+
+getFreq <- function(tdm) {
+        freq <- sort(rowSums(as.matrix(tdm)), decreasing = TRUE)
+        return(data.frame(word = names(freq), freq = freq))
+        }
+
+freq1 <- getFreq(TermDocumentMatrix(corpus, control = list(unigram)))
+freq2 <- getFreq(TermDocumentMatrix(corpus, control = list(bigram)))
+freq3 <- getFreq(TermDocumentMatrix(corpus, control = list(trigram)))
+
+makePlot <- function(data, label) {
+  ggplot(data[1:30,], aes(reorder(word, -freq), freq)) +
+         labs(x = label, y = "Frequency") +
+         theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+         geom_bar(stat = "identity", fill = I("grey50"))
+}
+
+
+# Here is a histogram of the 30 most common unigrams, bigrams, and trigrams, in the data sample.
+
+makePlot(freq1, "30 Most Common Unigrams")
+makePlot(freq2, "30 Most Common Bigrams")
+makePlot(freq3, "30 Most Common Trigrams")
+
+```
+
+## Next Steps: Creating a prediction algorithm & Shiny app
+I will next aim to:          
+- increase our sample size from the current 1% to a larger sample size,                 
+- improve accuracy by fine tuning the prediction model,         
+- create a Shiny app for a friendly user-interface. 
+
+
+
+
