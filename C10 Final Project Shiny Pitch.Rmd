@@ -1,0 +1,42 @@
+---
+title: "Text Prediction"
+subtitle: "Sandy Sng, 13 June 2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Overview
+
+- The goal of this exercise is to create a product to highlight the prediction algorithm that you have built and to provide an interface that can be accessed by others. For this project you must submit:       
+- A Shiny app that takes as input a phrase (multiple words) in a text box input and outputs a prediction of the next word.    
+- A slide deck consisting of no more than 5 slides created with R Studio Presenter pitching your algorithm and app as if you were presenting to your boss or an investor. 
+- Data Science Specialization by John Hopkins University on Coursera: https://www.coursera.org/specializations/jhu-data-science
+
+## Instructions to Use Shiny App
+
+- The idea of this project is to make predictions upon the text user inputs.         
+- Enter a single word or sentence into the textbox, there will be an output immediately, as we predict the next word using a N-gram model.  
+- To better understand what the whole sentence would be, you can see what you entered exactly, and see what follows. 
+- For more information, click here: https://github.com/sdsng/C10W7-Capstone/tree/master
+
+## The Algorithm Behind the App
+
+The process is as follows:
+
+- First, we cleaned the data that you inputted by removing punctuations, changing all capitals to lowercases, removing all spaces, and clean all symbols or characters we can't read. Do note that this app currently only supports English.  
+- Second, we try to find the possible answers based on the bigram and trigram matrixs we built.       
+- Last, we follow the grams to check which sets of words appear with the highest frequency, and suggest that as an output.
+
+## More Info on N-grams
+
+N-gram models are widely used in statistical natural language processing. Below are some paper or lectures you can check out if you are interested in this topic.
+
+Wikipedia Source: https://en.wikipedia.org/wiki/N-gram#n-gram_models
+
+Michael Collin's Notes on N-gram Language Models: http://www.cs.columbia.edu/~mcollins/courses/nlp2011/notes/lm.pdf
+
+N-grams Data based on the Corpus of Contemporary American English (COCA): http://www.ngrams.info/
+
